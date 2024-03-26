@@ -257,7 +257,7 @@ class NumericRelationVerbalizer_Question(
 class WithVerbalizer(Configurable):
     args = Configurable.args + [
         ('--numprop-verbalizer', dict(type=str, default='question')),
-        ('--add-initial-space', dict(action='store_true')),
+        ('--add-initial-space', dict(type=bool, default=True)),
         ('--prompt-template', dict(type=str, default='gpt-jt')),
         ]
 
