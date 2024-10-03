@@ -49,6 +49,7 @@ Goodness of fit ($R^2$)    0.906423
 ```
 
 And the plot should look like this:
+
 ![regression goodness of fit as function of n_components](out/fig/dim_reduction.n_components_vs_r_squared.numprop_P569.trf_Llama-2-13b-hf.mention_last_pooling.verbalizer_question.layer_None.layer_rel_0.3.target_value_power.n_components_50.png)
 
 # Plotting projections of entity representations onto the top two PLS components
