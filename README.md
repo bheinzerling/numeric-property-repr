@@ -29,7 +29,7 @@ This will:
 1. load entity data for the Wikidata property [P569](https://www.wikidata.org/wiki/Property:P569) which is "year of birth"
 2. verbalize the entity data according to a prompt template, the default is " In what year was X born?"
 3. encode the prompt with a LM, here Llama-2-13B
-4. select specified hidden state for each instance, in this case the hidden state corresponding to the last mention token in layer 0.3
+4. select the specified hidden state for each instance, in this case the hidden state corresponding to the last mention token in layer 0.3
 5. fit various regression models to predict the entity's year of birth from their hidden state
 6. run a sweep over the `n_components` ($k$ in the paper) parameter of PCA and PLS models
 7. print the values of the best setting
