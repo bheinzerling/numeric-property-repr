@@ -129,6 +129,89 @@ And also a .tex file like `out/tbl/edit_effect_examples.dev.Llama-2-13b-hf.menti
 
 <img src="out/fig/directed_activation_patching_example_outputs.png" width="50%">
 
+# Analyzing effects and side effects
+
+Figure 5 of the paper shows aggregated effects and side effects of directed activation patching. The diagonals in each subfigure correspond to effects and off-diagonal entries to side-effects. The effect values can be obtained by running the `patch_activations_directed` command from the previous section for a large number of entities (e.g., 100) and averaging the results. To check the side effects on a non-targeted property, we first fit a PLS model on a target data, e..g. birth year (P59), and then perform directed activation patching on non-target data, e.g., elevation above sea level (P2044):
+
+```
+python main.py patch_activations_check_side_effects \
+	--exp-name check_side_effects \
+	--trf-enc-batch-size 8 \
+	--transformer meta-llama/Llama-2-7b-hf \
+	--numprop-train-file data/wikidata/numprop_P569.quantile_9.sample_0.train.jsonl \
+	--numprop-train-size 1000 
+	--numprop-dev-size 500 \
+	--numprop-test-size 1000 \
+	--numprop-verbalizer question \
+	--text-enc-layer-relative 0.3 \
+	--text-enc-pooling mention_last \
+	--suffix-idx 0 \
+	--add-initial-space True \
+	--edit-prompt-suffix " One word answer only: " \
+	--edit-max-new-tokens 6 \
+	--edit-locus-layer-left-window-size 2 \
+	--edit-locus-layer-right-window-size 2 \
+	--edit-locus-token-left-window-size 2 \
+	--edit-locus-token-right-window-size \
+	--edit-locus-token-mode window \
+	--n-edit-steps 40 \
+	--numprop-train-file-neg data/wikidata/numprop_P2044.quantile_9.sample_0.train.json \
+	--edit-inst-idx 998
+```
+
+If everyhing worked you should see output like this:
+```
+2024-12-10 12:21:37|  How high is Espoo? One word answer only:  -> 100.\nThe [parsed: 100]
+2024-12-10 12:21:37| tensor sizes train: X: torch.Size([1000, 4096]) y: (1000, 1)
+2024-12-10 12:21:49| edit token wwindow: [6, 7, 8, 9]
+2024-12-10 12:21:49| edit layer window: [8, 9, 10, 11, 12]
+2024-12-10 12:21:49| dir_idx: 0
+0       32.17    How high is Espoo? One word answer only:       100%\n\n
+1       30.48    How high is Espoo? One word answer only:       100%\n\n
+2       28.78    How high is Espoo? One word answer only:       100%\n\n
+3       27.09    How high is Espoo? One word answer only:       100%\n\n
+4       25.40    How high is Espoo? One word answer only:       100%\n\n
+5       23.70    How high is Espoo? One word answer only:       100%\n\n
+6       22.01    How high is Espoo? One word answer only:       100%\n\n
+7       20.32    How high is Espoo? One word answer only:       100000
+8       18.63    How high is Espoo? One word answer only:       100000
+9       16.93    How high is Espoo? One word answer only:       100000
+10      15.24    How high is Espoo? One word answer only:       100000
+11      13.55    How high is Espoo? One word answer only:       100000
+12      11.85    How high is Espoo? One word answer only:       100000
+13      10.16    How high is Espoo? One word answer only:       100000
+14      8.47     How high is Espoo? One word answer only:       100000
+15      6.77     How high is Espoo? One word answer only:       100000
+16      5.08     How high is Espoo? One word answer only:       100000
+17      3.39     How high is Espoo? One word answer only:       100.\nThe
+18      1.69     How high is Espoo? One word answer only:       100.\nThe
+19      0.00     How high is Espoo? One word answer only:       100.\nThe
+20      -0.94    How high is Espoo? One word answer only:       100.\nThe                                                                                                        21      -1.89    How high is Espoo? One word answer only:       100.\nThe
+22      -2.83    How high is Espoo? One word answer only:       100.\nThe
+23      -3.78    How high is Espoo? One word answer only:       100.\nThe
+24      -4.72    How high is Espoo? One word answer only:       1000.\n
+25      -5.66    How high is Espoo? One word answer only:       1000.\n
+26      -6.61    How high is Espoo? One word answer only:       1000 feet.
+27      -7.55    How high is Espoo? One word answer only:       100%.\n\n
+28      -8.50    How high is Espoo? One word answer only:       100%.\n\n
+29      -9.44    How high is Espoo? One word answer only:       100%.\n\n
+30      -10.38   How high is Espoo? One word answer only:       100%.\n\n
+31      -11.33   How high is Espoo? One word answer only:       100%.\n\n
+32      -12.27   How high is Espoo? One word answer only:       100%.\n\n
+33      -13.22   How high is Espoo? One word answer only:       100%.\n\n
+34      -14.16   How high is Espoo? One word answer only:       100%.\n\n
+35      -15.11   How high is Espoo? One word answer only:       100%.\n\n
+36      -16.05   How high is Espoo? One word answer only:       100%.\n\n
+37      -16.99   How high is Espoo? One word answer only:       100%.\n\n
+38      -17.94   How high is Espoo? One word answer only:       100%.\n everybody
+39      -18.88   How high is Espoo? One word answer only:       100%.\n everybody
+```
+
+Each cell in a subfigure represents the average correlation between edit strength and model output change, across 100 entities (selected via the ``--edit-inst-idx'' argument) and each subfigure consists of 9x9 cells, which represent the 81 combinations of effects and side-effects across 9 numeric properties.
+Assuming you have collect the results of these 100x9x9 runs with ``--exp-name check_side_effects'', the following command will aggregate and plot the results:
+```
+python main.py analyze_side_effects --exp-name check_side_effects
+```
 
 # Citation
 
