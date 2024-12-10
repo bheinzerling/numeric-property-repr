@@ -237,8 +237,14 @@ class TransformerEncoder(Configurable):
                     enc_fn = self.trf
                     add_kwargs = dict()
 
+                try:
+                    use_cache = tok_out.pop('use_cache')
+                except KeyError:
+                    use_cache = False
+
                 trf_out = enc_fn(
                     **tok_out.to(self.conf.trf_enc_device),
+                    use_cache=use_cache,
                     output_hidden_states=output_hidden_states,
                     **add_kwargs,
                     )

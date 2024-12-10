@@ -371,14 +371,15 @@ class MainPatchActivations:
 
     def patch_activations_check_side_effects(self):
         from copy import deepcopy
-        from data import Data
+        from data import NumPropData
 
         split_name = 'train'
         assert self.conf.numprop_train_file_neg
+        make_and_set_rundir(self.conf, log=self.log)
         conf = deepcopy(self.conf)
         conf.numprop_train_file = conf.numprop_train_file_neg
 
-        neg_data = Data.get(conf.dataset)(conf)
+        neg_data = NumPropData(conf)
         neg_inst = self.get_inst(split_name, conf.edit_inst_idx, data=neg_data)
         edit_data = self.patch_activations_on_instance(neg_inst, data=neg_data)
         self.save_edit_data(edit_data)

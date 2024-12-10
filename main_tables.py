@@ -219,7 +219,10 @@ class MainTables:
         corr_vals = [round(np.abs(corr.statistic), 2) for corr in corrs]
         corr_row = ['$\\rho(\\alpha_s, y_{s,k})$'] + corr_vals
         corr_df = pd.DataFrame([corr_row], columns=list(pivot_df.columns))
-        pivot_df = pivot_df.append(corr_df, ignore_index=True)
+        pivot_df = pd.concat([pivot_df, corr_df], ignore_index=True)
+
+        print(pivot_df)
+
         midrule_after = set([len(pivot_df) - 2])
         bold_max_cols = list(pivot_df.columns)[1:]
         bold_max_row_idxs = set([len(pivot_df) - 1])
