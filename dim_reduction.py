@@ -129,14 +129,8 @@ class PLSRegression(DimReductionRegression):
 
     @property
     def _components(self):
-        n_components = self.conf.dim_reduction_n_components
-        components = []
-        for i in range(n_components):
-            component_mask = np.zeros((1, n_components))
-            component_mask[:, i] = 1
-            component = self.model.inverse_transform(component_mask)
-            components.append(component)
-        return np.concatenate(components, axis=0)
+        component_mask = np.eye(self.n_components)
+        return self.model.inverse_transform(component_mask)
 
     @cached_property
     def component2min_edit_weight(self):
