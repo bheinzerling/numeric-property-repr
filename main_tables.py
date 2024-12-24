@@ -204,8 +204,12 @@ class MainTables:
             index='weight_idx',
             columns=['dir_idx'],
             values=[output_col])
-        pivot_df.columns = [
-            '$y_{s,' + str(idx + 1) + '}$' for _, idx in pivot_df.columns]
+        if self.conf.edit_direction_coef:
+            pivot_df.columns = [
+                '$y_{s}$' for _, idx in pivot_df.columns]
+        else:
+            pivot_df.columns = [
+                '$y_{s,' + str(idx + 1) + '}$' for _, idx in pivot_df.columns]
         dir_columns = list(pivot_df.columns)
         edit_weights = np.linspace(-1, 1, num=len(pivot_df))
         edit_weights_str = [

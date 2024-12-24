@@ -53,6 +53,11 @@ class MainPatchActivations:
         ('--edit-locus-token-right-window-size', dict(type=int, default=0)),
         ('--edit-direction-scale-mode', dict(
             type=str, default='component', choices=['component', 'lm_repr'])),
+        ('--edit-direction-coef', dict(action='store_true')),
+        ('--edit-target-min', dict(type=float)),
+        ('--edit-target-max', dict(type=float)),
+        ('--edit-target-relative-min', dict(type=float)),
+        ('--edit-target-relative-max', dict(type=float)),
         ]
 
     @cached_property
@@ -156,6 +161,7 @@ class MainPatchActivations:
             scale_mode='component',
             dtype,
             device,
+            true_value=None,
             ):
         """Returns a range of vectors along a the PLS component direction
         specified by `dir_idx` and the corresponding weight range.
@@ -163,10 +169,42 @@ class MainPatchActivations:
         pls = self.pls
         repr_func = getattr(pls, f'edit_range_lm_repr__scale_{scale_mode}')
         # shape(dir_range) = (n_edit_steps, n_hidden)
-        dir_range = repr_func(dir_idx)
-        # shape(weight_range = (n_edit_steps, )
-        weight_range = pls.component_edit_range_weight(dir_idx)
-        dir_range = torch.tensor(dir_range, dtype=dtype, device=device)
+        if dir_idx == 'coef':
+            sort_idx = self.data.tensors['train']['value'].argsort(dim=0).view(-1)
+            X_sort = self.data.tensors['train']['mention_repr'][sort_idx]
+            # y_sort = self.data.tensors['train']['value'][sort_idx]
+            p = self.pls.model
+            step_idxs = list(range(0, len(X_sort), self.conf.n_edit_steps))
+            # project activations onto the regression direction
+            # x \in X associated with small y values will have small (or large negative)
+            # inner products with the regression direction and x associated with large y
+            # values will have large inner products
+            # X = X_sort[step_idxs] - p._x_mean
+            # weight_range = X @ p.coef_.T
+
+            def calc_w(y_target):
+                return float((y_target - p.intercept_) / np.linalg.norm(p.coef_))
+
+            def get_target(mode):
+                rel_val = getattr(self.conf, f'edit_target_relative_{mode}')
+                if rel_val is not None:
+                    assert true_value is not None
+                    return true_value + rel_val
+                target = getattr(self.conf, f'edit_target_{mode}')
+                assert target is not None
+                return target
+
+            w_min = calc_w(get_target('min'))
+            w_max = calc_w(get_target('max'))
+            weight_range = torch.linspace(w_min, w_max, self.conf.n_edit_steps).view(-1, 1)
+            # y_hat = X_sort @ p.coef_.T + p.intercept_
+            dir_range = weight_range @ p.coef_
+            weight_range = weight_range.view(-1).tolist()
+        else:
+            dir_range = repr_func(dir_idx)
+            # shape(weight_range = (n_edit_steps, )
+            weight_range = pls.component_edit_range_weight(dir_idx)
+            dir_range = torch.tensor(dir_range, dtype=dtype, device=device)
         return dir_range, weight_range
 
     def patch_activations_on_prompt(
@@ -230,6 +268,8 @@ class MainPatchActivations:
         # All the patches are applied iteratively and independently.
         # The patches get removed after each iteration, which means that
         # there is no cumulative effect.
+        if self.conf.edit_direction_coef:
+            dir_idxs = ['coef']
         for dir_idx in dir_idxs:
             self.log(f'dir_idx: {dir_idx}')
             # get the range of patches and weights along the current current
@@ -239,6 +279,7 @@ class MainPatchActivations:
                 scale_mode=self.conf.edit_direction_scale_mode,
                 dtype=dtype,
                 device=device,
+                true_value=inst.answer,
                 )
 
             # loop over all patches and weights in the current range
@@ -319,7 +360,7 @@ class MainPatchActivations:
             idxmax = 0
         else:
             idxmax = key_metric_df.idxmax()
-        locator = 'loc' if idxmax == 'mean' else 'iloc'
+        locator = 'loc' if idxmax in set(['mean', 'coef']) else 'iloc'
         best_direction_df = getattr(metrics_by_direction, locator)[idxmax]
         best_direction_metrics = best_direction_df.astype(np.float32).to_dict()
         best_direction_metrics['best_dir_idx'] = int(best_direction)
@@ -331,7 +372,10 @@ class MainPatchActivations:
         self.save_metrics(metrics)
         inputs_outputs = df.to_dict(orient='records')
         self.save_inputs_outputs(inputs_outputs)
-        best_metrics = self.select_best_metrics(metrics)
+        if self.conf.edit_direction_coef:
+            best_metrics = metrics.groupby('dir_idx').mean().to_dict()
+        else:
+            best_metrics = self.select_best_metrics(metrics)
         self.log_metrics(best_metrics)
         self.save_results(exp_params=self.exp_params, metrics=best_metrics)
         self._write_example_table(inputs_outputs)
