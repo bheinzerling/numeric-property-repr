@@ -1,0 +1,4 @@
+# Mark the entire folder as vendored so it doesn't count towards language stats
+data/** linguist-vendored
+out/** linguist-vendored
+
